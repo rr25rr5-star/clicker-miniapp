@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Clicker Mini App</title>
+    <style>
+        body { font-family: Arial; text-align: center; margin-top: 50px; }
+        #coins { font-size: 48px; color: #ff9800; margin-bottom: 20px; }
+        #clickButton { font-size: 24px; padding: 20px 40px; margin-bottom: 20px; cursor: pointer; }
+        #progressContainer { width: 80%; height: 30px; background-color: #ddd; margin: 0 auto; border-radius: 15px; overflow: hidden; }
+        #progressBar { height: 100%; width: 100%; background-color: #4caf50; transition: width 0.2s; }
+        .boosterBtn { font-size: 18px; padding: 10px 20px; margin: 5px; cursor: pointer; }
+        #leaderboard { margin-top: 30px; text-align: left; width: 50%; margin-left: auto; margin-right: auto; }
+    </style>
+</head>
+<body>
+    <div id="coins">0</div>
+    <button id="clickButton">Click me!</button>
+
+    <div id="progressContainer">
+        <div id="progressBar"></div>
+    </div>
+
+    <div id="boosters">
+        <h3>Boosters (Stars):</h3>
+        <button class="boosterBtn" data-level="1">Level 1: 5-10 stars</button>
+        <button class="boosterBtn" data-level="2">Level 2: 10-100 stars</button>
+        <button class="boosterBtn" data-level="3">Level 3: 25-1000 stars</button>
+    </div>
+
+    <div id="leaderboard">
+        <h3>Leaderboard</h3>
+        <ol id="leaderList"></ol>
+    </div>
+
+    <script>
+        const user_id = Math.floor(Math.random()*1000000); // demo, Telegramdan real user.id olish mumkin
+        let coins = 0;
+        let progress = 1000;
+        let multiplier = 1;
+
+        const coinsDiv = document.getElementById("coins");
+        const progressBar = document.getElementById("progressBar");
+
+        async function updateServer(coinsAdd, progressChange, booster=0){
+            const res = await fetch("http://localhost:5000/update", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ user_id, coins_add: coinsAdd, progress_change: progressChange, booster })
+            });
+            const data = await res.json();
+            coins = data.coins;
+            progress = data.progress;
+            multiplier = data.multiplier;
+
+            coinsDiv.textContent = coins;
+            progressBar.style.width = (progress/1000*100) + "%";
+            loadLeaderboard();
+        }
+
+        document.getElementById("clickButton").addEventListener("click", ()=>{
+            updateServer(1, -1);
+        });
+
+        document.querySelectorAll(".boosterBtn").forEach(btn=>{
+            btn.addEventListener("click", ()=>{
+                const level = parseInt(btn.getAttribute("data-level"));
+                let booster = 0;
+                if(level===1) booster = 5;
+                if(level===2) booster = 10;
+                if(level===3) booster = 25;
+                updateServer(0,0,booster);
+                alert(`Booster applied! Multiplier +${booster}`);
+            });
+        });
+
+        async function loadLeaderboard(){
+            const res = await fetch("http://localhost:5000/leaderboard");
+            const data = await res.json();
+            const leaderList = document.getElementById("leaderList");
+            leaderList.innerHTML = "";
+            data.forEach(u=>{
+                let li = document.createElement("li");
+                li.textContent = `User ${u.user_id}: ${u.coins} coins`;
+                leaderList.appendChild(li);
+            });
+        }
+
+        loadLeaderboard();
+    </script>
+</body>
+</html>
